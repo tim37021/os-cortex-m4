@@ -3,7 +3,6 @@
 
 typedef void (*write_row)(int index, int value);
 typedef int (*read_col)(int index);
-typedef void (*delay)(int);
 
 typedef struct IOInterface {
     write_row write_row;
