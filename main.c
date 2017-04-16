@@ -4,8 +4,6 @@
 #include "stm32f4xx_gpio.h"
 #include "utility.h"
 #include "keybd_stm32.h"
-#include <string.h>
-#include <stdio.h>
 
 static const char *str="Hi, tim37021, ps2747";
 static int on_off = 0;
