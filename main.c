@@ -10,9 +10,12 @@ static int on_off = 0;
 IOInterface *interface;
 int last_result[4][4];
 KeyEvent cur_event[4][4];
-char key_name[4][4] = {'1', '2', '3', 'A', '4', '5', '6', 'B', '7', '8', '9', 'C', '*', '0', '#', 'D'};
+char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
 int n;
 char text[256];
+
+
+void syscall();
 
 static void init(void)
 {
@@ -45,11 +48,11 @@ static void update(void)
 
 
 	if(STM_EVAL_PBGetState(BUTTON_USER)) {
-
+ 		syscall();
 		for(int i=0; i<100000; i++);
 		while (STM_EVAL_PBGetState(BUTTON_USER)); // debounce
 	}
-
+	
 }
 
 static void render(void)
@@ -60,12 +63,12 @@ static void render(void)
 	update_keybd_event(4, 4, last_result, result, cur_event);
 	for(int i=0; i<4; i++) {
 		for(int j=0; j<4; j++) {
-			if(n<254&&cur_event[i][j]==KEY_DOWN)
-				text[n++] = key_name[i][j];
+			if(cur_event[i][j]==KEY_DOWN)
+				strcat(text, key_name[i][j]);
 		}
 	}
 	// DELAY
-	for(int i=0; i<10000; i++);
+	for(int i=0; i<100000; i++);
 }
 
 int main(void)
@@ -81,6 +84,11 @@ int main(void)
 
 void OnSysTick(void)
 {
+}
+
+void svc_handler(int value)
+{
+
 }
 
 #ifdef  USE_FULL_ASSERT

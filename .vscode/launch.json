@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "miDebuggerPath": "arm-none-eabi-gdb",
-            "program": "${workspaceRoot}/r3d.elf",
+            "program": "${workspaceRoot}/project.elf",
             "miDebuggerServerAddress": "localhost:3333",
             "targetArchitecture": "arm",
             "args": [],

@@ -115,8 +115,17 @@ void UsageFault_Handler(void)
   * @param  None
   * @retval None
   */
-void SVC_Handler(void)
+extern void svc_handler(int);
+ __attribute__ ((naked)) void SVC_Handler(void)
 {
+  __asm__(
+    "ldr r0, [sp, #0x18]\n"
+    "ldr r0, [r0, #-2]\n"
+    "bic r0, r0, 0xFFFFFFF0\n"
+    "push {lr}\n"
+    "bl svc_handler\n"
+    "pop {lr}\n"
+    "bx lr\n");
 }
 
 /**

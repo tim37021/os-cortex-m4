@@ -30,10 +30,15 @@ IOInterface *init_stm32_keybd()
 
 static void stm32_write_row(int index, int value)
 {
-	if(value==0)
+	if(value==0) {
+		init_output_pins(row_pins[index].gpio_id, row_pins[index].pin_index);
 		GPIO_ResetBits(row_pins[index].gpio_id,row_pins[index].pin_index);
-	else
-		GPIO_SetBits(row_pins[index].gpio_id,row_pins[index].pin_index);
+	} else {
+		// when HIGH set to input mode
+		init_input_pins(row_pins[index].gpio_id, row_pins[index].pin_index, GPIO_PuPd_UP);
+		for(int i=0; i<100000;i++);
+		//GPIO_SetBits(row_pins[index].gpio_id,row_pins[index].pin_index);
+	}
 }
 
 static int stm32_read_col(int index)

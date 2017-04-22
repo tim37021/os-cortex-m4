@@ -57,6 +57,7 @@ OBJS = \
 	ltdc.o \
 	utility.o \
 	keybd_stm32.o \
+	context_switch.o \
 	keybd.o \
     stm32f4xx_it.o \
     system_stm32f4xx.o
