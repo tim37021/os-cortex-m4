@@ -118,14 +118,24 @@ void UsageFault_Handler(void)
 extern void svc_handler(int);
  __attribute__ ((naked)) void SVC_Handler(void)
 {
-  __asm__(
+  /*__asm__(
     "ldr r0, [sp, #0x18]\n"
     "ldr r0, [r0, #-2]\n"
     "bic r0, r0, 0xFFFFFFF0\n"
     "push {lr}\n"
     "bl svc_handler\n"
     "pop {lr}\n"
-    "bx lr\n");
+    "bx lr\n");*/
+
+    __asm__(
+      "mov r0, #0\n"
+      "msr control, r0\n"
+      "mrs r0, psp\n"
+      "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"
+      "pop {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}\n"
+      "msr psr_nzcvq, ip\n"
+      "bx lr\n"
+    );
 }
 
 /**
@@ -152,9 +162,15 @@ void PendSV_Handler(void)
   * @retval None
   */
 extern void OnSysTick(void);
-void SysTick_Handler(void)
+ __attribute__ ((naked)) void SysTick_Handler(void)
 {
-	OnSysTick();
+    __asm__(
+      "mrs r0, psp\n"
+      "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"
+      "pop {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}\n"
+      "msr psr_nzcvq, ip\n"
+      "bx lr\n"
+    );
 }
 
 void _exit(int code)

@@ -95,7 +95,8 @@ OBJS += \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_syscfg.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.o \
-    $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.o
+    $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.o \
+	$(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.o
 
 # STM32F429I-Discovery Utilities
 CFLAGS += -I$(STDP)/Utilities/STM32F429I-Discovery
