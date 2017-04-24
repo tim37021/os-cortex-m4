@@ -124,6 +124,19 @@ void test_task()
 	}
 }
 
+void test_task2()
+{
+	while(1) {
+		//LCD_Clear(0xFFFF);
+		on_off = !on_off;
+		if(on_off)
+			GPIO_SetBits(GPIOE,GPIO_Pin_8);
+		else
+			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
+		for(int i=0; i<100000; i++);
+	}
+}
+
 uint32_t *create_task(uint32_t *stack, void (*start)()) 
 {
 	stack +=  512 - 32;
@@ -196,8 +209,9 @@ int main(void)
 	uint32_t *task_stack[2];
 
 	task_stack[0] = create_task(stack, test_task);
+	//task_stack[1] = create_task(stack2, test_task2);
 
-	SysTick_Config(SystemCoreClock / 100); // SysTick event each 10ms
+	SysTick_Config(SystemCoreClock / 1000); // SysTick event each 10ms
 
 	while (1) {
 		task_stack[0] = activate(task_stack[0]);
