@@ -23,7 +23,7 @@ IOInterface *init_stm32_keybd()
 		init_output_pins(row_pins[i].gpio_id, row_pins[i].pin_index);
 		init_input_pins(col_pins[i].gpio_id, col_pins[i].pin_index, GPIO_PuPd_UP);
 	}
-
+ 
     init_keybd(&interface, 4, 4);
     return &interface;
 }
@@ -36,8 +36,8 @@ static void stm32_write_row(int index, int value)
 	} else {
 		// when HIGH set to input mode
 		init_input_pins(row_pins[index].gpio_id, row_pins[index].pin_index, GPIO_PuPd_UP);
-		for(int i=0; i<100000;i++);
-		//GPIO_SetBits(row_pins[index].gpio_id,row_pins[index].pin_index);
+		//for(int i=0; i<1000;i++);
+		GPIO_SetBits(row_pins[index].gpio_id,row_pins[index].pin_index);
 	}
 }
 

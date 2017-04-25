@@ -29,7 +29,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
-    
+#include "stdint.h"  
+  
 /** @addtogroup STM32F429I_DISCOVERY_Examples
   * @{
   */
@@ -164,9 +165,15 @@ void PendSV_Handler(void)
 extern void OnSysTick(void);
  __attribute__ ((naked)) void SysTick_Handler(void)
 {
+
+    __asm__(
+      "cmp lr, #0xFFFFFFF9\n"
+      "it eq\n"
+      "bxeq lr\n");
     __asm__(
       "mrs r0, psp\n"
       "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"
+      "bl OnSysTick\n"
       "pop {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}\n"
       "msr psr_nzcvq, ip\n"
       "bx lr\n"

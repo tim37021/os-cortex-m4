@@ -13,9 +13,16 @@ KeyEvent cur_event[4][4];
 char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
 int n;
 char text[256];
-uint32_t stack[512];
+uint32_t stack[512], stack2[512];
 
 void syscall();
+uint32_t ticks_counter=0;
+
+struct TCB{
+	// 0 = ready, <0 = sleep
+	int status;
+	uint32_t *stack;
+};
 
 static void init_usart1()
 {
@@ -119,13 +126,14 @@ static void render(void)
 void test_task()
 {
 	while(1) {
-		update();
-		render();
+		//render();
+		for(int i=0; i<100000; i++);
 	}
 }
 
 void test_task2()
 {
+	int last_tick = ticks_counter;
 	while(1) {
 		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
@@ -133,73 +141,25 @@ void test_task2()
 			GPIO_SetBits(GPIOE,GPIO_Pin_8);
 		else
 			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
-		for(int i=0; i<100000; i++);
+		while(ticks_counter-last_tick<=1000);
+		last_tick = ticks_counter;
 	}
 }
 
-uint32_t *create_task(uint32_t *stack, void (*start)()) 
+uint32_t *create_task(uint32_t *stack, void (*start)(), int first) 
 {
 	stack +=  512 - 32;
-	stack[8] = (uint32_t)start;
-
+	if(first) {
+		stack[8] = (uint32_t)start;
+	} else {
+		stack[8] = (uint32_t)0xFFFFFFFD;
+		stack[15] = (uint32_t)start;
+		stack[16] = (uint32_t)0x01000000;
+	}
 	return stack;
 }
 
 uint32_t activate(void *);
-
-////////////////////
-void RCC_Configuration(void)
-{
-    /* --------------------------- System Clocks Configuration -----------------*/
-    /* USART1 clock enable */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-    /* GPIOA clock enable */
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-}
-
-void GPIO_Configuration(void)
-{
-    GPIO_InitTypeDef GPIO_InitStructure;
-
-    /*-------------------------- GPIO Configuration ----------------------------*/
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-    /* Connect USART pins to AF */
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);   // USART1_TX
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);  // USART1_RX
-}
-
-void USART1_Configuration(void)
-{
-    USART_InitTypeDef USART_InitStructure;
-
-    /* USARTx configuration ------------------------------------------------------*/
-    /* USARTx configured as follow:
-     *  - BaudRate = 9600 baud
-     *  - Word Length = 8 Bits
-     *  - One Stop Bit
-     *  - No parity
-     *  - Hardware flow control disabled (RTS and CTS signals)
-     *  - Receive and transmit enabled
-     */
-    USART_InitStructure.USART_BaudRate = 9600;
-    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-    USART_InitStructure.USART_StopBits = USART_StopBits_1;
-    USART_InitStructure.USART_Parity = USART_Parity_No;
-    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_Init(USART1, &USART_InitStructure);
-
-
-    USART_Cmd(USART1, ENABLE);
-}
-
-/////////////////////
 
 int main(void)
 {
@@ -208,19 +168,30 @@ int main(void)
 
 	uint32_t *task_stack[2];
 
-	task_stack[0] = create_task(stack, test_task);
-	//task_stack[1] = create_task(stack2, test_task2);
+	task_stack[0] = create_task(stack, test_task, 1);
+	task_stack[1] = create_task(stack2, test_task2, 0);
+	int cur_task = 0;
 
 	SysTick_Config(SystemCoreClock / 1000); // SysTick event each 10ms
 
 	while (1) {
-		task_stack[0] = activate(task_stack[0]);
+		//SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
+		task_stack[cur_task] = activate(task_stack[cur_task]);
+		cur_task = (cur_task+1) % 2;
+		//render();
+		//for(int i=0; i<10000; i++);
 	}
 }
 
 void svc_handler(int value)
 {
 
+}
+
+__attribute__((naked)) void OnSysTick(void)
+{
+	ticks_counter++;
+	__asm__("bx lr\n");
 }
 
 #ifdef  USE_FULL_ASSERT

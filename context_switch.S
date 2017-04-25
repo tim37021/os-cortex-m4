@@ -1,5 +1,4 @@
 .syntax unified
-
 .global syscall
 syscall:
     svc 0
@@ -17,11 +16,7 @@ activate:
     /* switch to process stack */
     msr psp, r0
 
-    /*ittt ls
-    movls r0, #3
-    msrls control, r0
-    isbls
-*/
     mov r0, #3
     msr control, r0
+
     bx lr
