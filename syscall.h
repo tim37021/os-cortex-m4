@@ -1,6 +1,9 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
-int write(int fd, const char *buf, int count);
+#include <stdint.h>
+#include "syscall_number.h"
+
+void sleep(uint32_t miliseconds);
 
 #endif

@@ -116,7 +116,7 @@ void UsageFault_Handler(void)
   * @param  None
   * @retval None
   */
-extern void svc_handler(int);
+extern void syscall_handler(int, uint32_t psp);
  __attribute__ ((naked)) void SVC_Handler(void)
 {
   /*__asm__(
@@ -129,10 +129,12 @@ extern void svc_handler(int);
     "bx lr\n");*/
 
     __asm__(
-      "mov r0, #0\n"
-      "msr control, r0\n"
       "mrs r0, psp\n"
+      "ldr r1, [r0, #0x18]\n"
+      "ldr r1, [r1, #-2]\n"
+      "bic r1, #0xFFFFFF00\n"
       "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"
+      "str r1, [r0, #-4]\n"
       "pop {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}\n"
       "msr psr_nzcvq, ip\n"
       "bx lr\n"
@@ -173,7 +175,8 @@ extern void OnSysTick(void);
     __asm__(
       "mrs r0, psp\n"
       "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"
-      "bl OnSysTick\n"
+      "mov r1, #0\n"
+      "str r1, [r0, #-4]\n"
       "pop {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}\n"
       "msr psr_nzcvq, ip\n"
       "bx lr\n"

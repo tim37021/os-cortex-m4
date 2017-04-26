@@ -4,6 +4,7 @@
 #include "stm32f4xx_gpio.h"
 #include "utility.h"
 #include "keybd_stm32.h"
+#include "syscall.h"
 
 static const char *str="Hi, tim37021, ps2747";
 static int on_off = 0;
@@ -14,12 +15,13 @@ char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", 
 int n;
 char text[256];
 uint32_t stack[512], stack2[512];
+int cur_task = 0;
 
 void syscall();
-uint32_t ticks_counter=0;
+volatile uint32_t ticks_counter=0;
 
-struct TCB{
-	// 0 = ready, <0 = sleep
+struct TCB {
+	// 0 = ready, 1 suspended, <0 = sleep milisecond
 	int status;
 	uint32_t *stack;
 };
@@ -126,8 +128,6 @@ static void render(void)
 void test_task()
 {
 	while(1) {
-		//render();
-		for(int i=0; i<100000; i++);
 	}
 }
 
@@ -141,12 +141,11 @@ void test_task2()
 			GPIO_SetBits(GPIOE,GPIO_Pin_8);
 		else
 			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
-		while(ticks_counter-last_tick<=1000);
-		last_tick = ticks_counter;
+		sleep(1000);
 	}
 }
 
-uint32_t *create_task(uint32_t *stack, void (*start)(), int first) 
+struct TCB create_task(uint32_t *stack, void (*start)(), int first) 
 {
 	stack +=  512 - 32;
 	if(first) {
@@ -156,36 +155,41 @@ uint32_t *create_task(uint32_t *stack, void (*start)(), int first)
 		stack[15] = (uint32_t)start;
 		stack[16] = (uint32_t)0x01000000;
 	}
-	return stack;
+	return (struct TCB) {.status=0, .stack=stack};
 }
 
-uint32_t activate(void *);
+void *activate(void *);
 
+#define TICKS_PER_SEC 10000
 int main(void)
 {
-
 	init();
 
-	uint32_t *task_stack[2];
+	struct TCB tasks[2];
 
-	task_stack[0] = create_task(stack, test_task, 1);
-	task_stack[1] = create_task(stack2, test_task2, 0);
-	int cur_task = 0;
+	tasks[0] = create_task(stack, test_task, 1);
+	tasks[1] = create_task(stack2, test_task2, 0);
+	
 
-	SysTick_Config(SystemCoreClock / 1000); // SysTick event each 10ms
+	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
 
 	while (1) {
-		//SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
-		task_stack[cur_task] = activate(task_stack[cur_task]);
+		if(tasks[cur_task].status == 0 || ticks_counter>=-tasks[cur_task].status) {
+			tasks[cur_task].status = 0;
+			tasks[cur_task].stack = activate(tasks[cur_task].stack);
+			int func_number = tasks[cur_task].stack[-1];
+			void *param1 = &tasks[cur_task].stack[9];
+			switch(func_number) {
+				case 0:
+					ticks_counter++; break;
+				case SLEEP_SVC_NUMBER: // SLEEP
+					tasks[cur_task].status = -(TICKS_PER_SEC*(*(int32_t *)param1)/1000 + (int32_t)ticks_counter);
+					break;
+			} 
+		}
+
 		cur_task = (cur_task+1) % 2;
-		//render();
-		//for(int i=0; i<10000; i++);
 	}
-}
-
-void svc_handler(int value)
-{
-
 }
 
 __attribute__((naked)) void OnSysTick(void)

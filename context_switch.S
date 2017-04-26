@@ -1,7 +1,18 @@
+#include "syscall_number.h"
+
 .syntax unified
 .global syscall
 syscall:
     svc 0
+    bx lr
+
+.global sleep
+sleep:
+    svc SLEEP_SVC_NUMBER
+    bx lr
+
+.global back_to_sv
+    svc BACKTOSV_SVC_NUMBER
     bx lr
 
 .global activate
