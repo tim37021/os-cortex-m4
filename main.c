@@ -107,7 +107,7 @@ static void update(void)
 	
 }
 
-static void render(void)
+static void scan(void)
 {
 	//LCD_DisplayStringLine(LCD_LINE_1, str);
 	int result[4][4];
@@ -128,12 +128,12 @@ static void render(void)
 void test_task()
 {
 	while(1) {
+		//sleep(1000);
 	}
 }
 
 void test_task2()
 {
-	int last_tick = ticks_counter;
 	while(1) {
 		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
