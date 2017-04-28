@@ -15,8 +15,7 @@ KeyEvent cur_event[4][4];
 char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
 int n;
 char text[256];
-uint32_t stack[512], stack2[512];
-int cur_task = 0;
+uint32_t idle_task_stack[36], task_stack[512];
 
 void syscall();
 volatile uint32_t ticks_counter=0;
@@ -132,7 +131,7 @@ static void scan(void)
 	}
 }
 
-void idle_task()
+__attribute__((naked)) void idle_task()
 {
 	while(1) {
 		//sleep(1000);
@@ -152,9 +151,9 @@ void test_task()
 	}
 }
 
-struct TCB create_task(uint32_t *stack, void (*start)(), int priority, int first) 
+struct TCB create_task(uint32_t *stack, void (*start)(), int stack_size, int priority, int first) 
 {
-	stack +=  512 - 32;
+	stack +=  stack_size - 32;
 	if(first) {
 		stack[8] = (uint32_t)start;
 	} else {
@@ -177,9 +176,8 @@ int main(void)
 	init();
 
 
-	tasks[num_tasks++] = create_task(stack, idle_task, 100, 1);
-	tasks[num_tasks++] = create_task(stack2, test_task, 1000,  0);
-
+	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, 36, 100, 1);
+	tasks[num_tasks++] = create_task(task_stack, test_task, 512, 1000,  0);
 	PriorityQueue q = pq_init(tasks_queue, compare);
 	for(int i=0; i<num_tasks; i++) {
 		pq_push(&q, &tasks[i]);
