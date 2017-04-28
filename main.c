@@ -122,35 +122,29 @@ __attribute__((naked)) void idle_task()
 	}
 }
 
-void test_task()
+struct test_task_param {
+	uint16_t pin;
+	uint32_t delay;
+};
+
+void test_task(struct test_task_param *param_)
 {
+	struct test_task_param param = *param_;
 	int on_off = 0;
 	while(1) {
 		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
 		if(on_off)
-			GPIO_SetBits(GPIOE,GPIO_Pin_8);
+			GPIO_SetBits(GPIOE, param.pin);
 		else
-			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
-		sleep(1000);
+			GPIO_ResetBits(GPIOE, param.pin);
+		sleep(param.delay);
 	}
 }
 
-void test_task2()
-{
-	int on_off = 0;
-	while(1) {
-		//LCD_Clear(0xFFFF);
-		on_off = !on_off;
-		if(on_off)
-			GPIO_SetBits(GPIOE,GPIO_Pin_10);
-		else
-			GPIO_ResetBits(GPIOE,GPIO_Pin_10);
-		sleep(500);
-	}
-}
+void *activate(void *);
 
-struct TCB create_task(uint32_t *stack, void (*start)(), int stack_size, int priority, int first) 
+struct TCB create_task(uint32_t *stack, void (*start)(), void *param, int stack_size, int priority, int first) 
 {
 	stack +=  stack_size - 32;
 	if(first) {
@@ -160,6 +154,9 @@ struct TCB create_task(uint32_t *stack, void (*start)(), int stack_size, int pri
 		stack[15] = (uint32_t)start;
 		stack[16] = (uint32_t)0x01000000;
 	}
+	// r0
+	stack[9] = (uint32_t)param;
+	stack = activate(stack);
 	return (struct TCB) {.status=0, .priority=priority, .stack=stack};
 }
 
@@ -167,26 +164,23 @@ static int compare(const void *lhs, const void *rhs) {
 	return ((const struct TCB *)lhs)->priority < ((const struct TCB *)rhs)->priority;
 }
 
-void *activate(void *);
-
 #define TICKS_PER_SEC 10000
 int main(void)
 {
 	init();
 
+	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
+
 	int num_tasks=0;
-	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, 36, 100, 1);
-	tasks[num_tasks++] = create_task(task_stack, test_task, 256, 1000,  0);
-	tasks[num_tasks++] = create_task(task_stack2, test_task2, 256, 1000,  0);
+	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, NULL, 36, 100, 1);
+	struct test_task_param param1={.pin=GPIO_Pin_8, .delay=1000}, param2={.pin=GPIO_Pin_10, .delay=500};
+	tasks[num_tasks++] = create_task(task_stack, test_task, &param1, 256, 1000,  0);
+	tasks[num_tasks++] = create_task(task_stack2, test_task, &param2, 256, 1000,  0);
 	PriorityQueue q = pq_init(tasks_queue, compare);
 	for(int i=0; i<num_tasks; i++) {
 		pq_push(&q, &tasks[i]);
 	}
 
-	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
-
-	// activate the first task
-	tasks[0].stack = activate(tasks[0].stack);
 	while (1) {
 		struct TCB *top;
 		void *stored_tasks[MAX_TASK];
