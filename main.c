@@ -132,14 +132,14 @@ static void scan(void)
 	}
 }
 
-void test_task()
+void idle_task()
 {
 	while(1) {
 		//sleep(1000);
 	}
 }
 
-void test_task2()
+void test_task()
 {
 	while(1) {
 		//LCD_Clear(0xFFFF);
@@ -177,8 +177,8 @@ int main(void)
 	init();
 
 
-	tasks[num_tasks++] = create_task(stack, test_task, 100, 1);
-	tasks[num_tasks++] = create_task(stack2, test_task2, 1000,  0);
+	tasks[num_tasks++] = create_task(stack, idle_task, 100, 1);
+	tasks[num_tasks++] = create_task(stack2, test_task, 1000,  0);
 
 	PriorityQueue q = pq_init(tasks_queue, compare);
 	for(int i=0; i<num_tasks; i++) {
