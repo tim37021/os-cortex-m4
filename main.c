@@ -5,6 +5,7 @@
 #include "utility.h"
 #include "keybd_stm32.h"
 #include "syscall.h"
+#include "priority_queue.h"
 
 static const char *str="Hi, tim37021, ps2747";
 static int on_off = 0;
@@ -21,10 +22,16 @@ void syscall();
 volatile uint32_t ticks_counter=0;
 
 struct TCB {
+	int priority;
 	// 0 = ready, 1 suspended, <0 = sleep milisecond
 	int status;
 	uint32_t *stack;
 };
+
+#define MAX_TASK 5
+struct TCB tasks[MAX_TASK];
+void *tasks_queue[MAX_TASK+1];
+int num_tasks=0;
 
 static void init_usart1()
 {
@@ -145,7 +152,7 @@ void test_task2()
 	}
 }
 
-struct TCB create_task(uint32_t *stack, void (*start)(), int first) 
+struct TCB create_task(uint32_t *stack, void (*start)(), int priority, int first) 
 {
 	stack +=  512 - 32;
 	if(first) {
@@ -155,7 +162,11 @@ struct TCB create_task(uint32_t *stack, void (*start)(), int first)
 		stack[15] = (uint32_t)start;
 		stack[16] = (uint32_t)0x01000000;
 	}
-	return (struct TCB) {.status=0, .stack=stack};
+	return (struct TCB) {.status=0, .priority=priority, .stack=stack};
+}
+
+static int compare(const void *lhs, const void *rhs) {
+	return ((const struct TCB *)lhs)->priority < ((const struct TCB *)rhs)->priority;
 }
 
 void *activate(void *);
@@ -165,30 +176,46 @@ int main(void)
 {
 	init();
 
-	struct TCB tasks[2];
 
-	tasks[0] = create_task(stack, test_task, 1);
-	tasks[1] = create_task(stack2, test_task2, 0);
+	tasks[num_tasks++] = create_task(stack, test_task, 100, 1);
+	tasks[num_tasks++] = create_task(stack2, test_task2, 1000,  0);
+
+	PriorityQueue q = pq_init(tasks_queue, compare);
+	for(int i=0; i<num_tasks; i++) {
+		pq_push(&q, &tasks[i]);
+	}
 	
 
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
 
+	// activate the first task
+	tasks[0].stack = activate(tasks[0].stack);
 	while (1) {
-		if(tasks[cur_task].status == 0 || ticks_counter>=-tasks[cur_task].status) {
-			tasks[cur_task].status = 0;
-			tasks[cur_task].stack = activate(tasks[cur_task].stack);
-			int func_number = tasks[cur_task].stack[-1];
-			void *param1 = &tasks[cur_task].stack[9];
-			switch(func_number) {
-				case 0:
-					ticks_counter++; break;
-				case SLEEP_SVC_NUMBER: // SLEEP
-					tasks[cur_task].status = -(TICKS_PER_SEC*(*(int32_t *)param1)/1000 + (int32_t)ticks_counter);
-					break;
-			} 
+		struct TCB *top;
+		void *stored_tasks[MAX_TASK];
+		int num_stored_tasks=0;
+		while((top = (struct TCB *)pq_top(&q)) && (top->status!=0 && ticks_counter<-top->status)) {
+			stored_tasks[num_stored_tasks++] = top;
+			pq_pop(&q);
 		}
-
-		cur_task = (cur_task+1) % 2;
+		// push back stored_tasks
+		for(int i=0; i<num_stored_tasks; i++) {
+			pq_push(&q, stored_tasks[i]);
+		}
+		// now top is the one we are going to activate
+		
+		top->status = 0;
+		top->stack = activate(top->stack);
+		int func_number = top->stack[-1];
+		void *param1 = &top->stack[9];
+		switch(func_number) {
+			case 0:
+				ticks_counter++; break;
+			case SLEEP_SVC_NUMBER: // SLEEP
+				top->status = -(TICKS_PER_SEC*(*(int32_t *)param1)/1000 + (int32_t)ticks_counter);
+				break;
+		} 
+		// no need to push back top
 	}
 }
 
