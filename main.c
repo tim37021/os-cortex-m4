@@ -7,13 +7,9 @@
 #include "syscall.h"
 #include "priority_queue.h"
 
-IOInterface *interface;
-int last_result[4][4];
-KeyEvent cur_event[4][4];
-char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
-int n;
-char text[256];
-uint32_t idle_task_stack[36], task_stack[64];
+const char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
+
+uint32_t idle_task_stack[36], task_stack[64], task_stack2[64];
 uint32_t main_task_stack[512];
 
 #define NORMAL_PRIORITY 1000
@@ -81,8 +77,7 @@ static void init(void)
 {
 	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
 	
-	interface = init_stm32_keybd();
-	init_usart1();
+
 }
 
 static void update(void)
@@ -95,22 +90,12 @@ static void update(void)
 	
 }
 
-static void scan(void)
+static void scan(IOInterface *interface, int last_result[][4], int cur_event[][4])
 {
 	//LCD_DisplayStringLine(LCD_LINE_1, str);
 	int result[4][4];
 	scan_keybd(interface, 4, 4, result);
 	update_keybd_event(4, 4, last_result, result, cur_event);
-	for(int i=0; i<4; i++) {
-		for(int j=0; j<4; j++) {
-			if(cur_event[i][j]==KEY_DOWN)
-				strcat(text, key_name[i][j]);
-		}
-	}
-	if(text[0]) {
-		USART1_puts(text);
-		text[0]='\0';
-	}
 }
 
 __attribute__((naked)) void idle_task()
@@ -145,8 +130,26 @@ void test_task(struct test_task_param *param_)
 }
 
 void main_task() {
+	int last_result[4][4];
+	KeyEvent cur_event[4][4];
+	char text[64];
+	text[0] = '\0';
+	IOInterface *interface = init_stm32_keybd();
 	while(1) {
-		scan();
+		scan(interface, last_result, cur_event);
+		for(int i=0; i<4; i++) {
+			for(int j=0; j<4; j++) {
+				if(cur_event[i][j]==KEY_DOWN)
+					strcat(text, key_name[i][j]);
+			}
+		}
+
+		if(text[0]) {
+			USART1_puts(text);
+			text[0]='\0';
+		}
+		// sleep for 20 ms
+		sleep(20);
 	}
 }
 
@@ -184,8 +187,9 @@ int main(void)
 	int num_tasks=0;
 	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, NULL, 36, LOW_PRIORITY, 1);
 
-	struct test_task_param param1={.pin=GPIO_Pin_8, .delay=1000};
+	struct test_task_param param1={.pin=GPIO_Pin_8, .delay=1000}, param2={.pin=GPIO_Pin_10, .delay=500};
 	tasks[num_tasks++] = create_task(task_stack, test_task, &param1, 64, NORMAL_PRIORITY,  0);
+	tasks[num_tasks++] = create_task(task_stack2, test_task, &param2, 64, NORMAL_PRIORITY,  0);
 	tasks[num_tasks++] = create_task(main_task_stack, main_task, NULL, 512, NORMAL_PRIORITY,  0);
 
 	for(int i=0; i<num_tasks; i++) {
