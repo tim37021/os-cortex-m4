@@ -3,5 +3,6 @@
 
 #define BACKTOSV_SVC_NUMBER 1
 #define SLEEP_SVC_NUMBER 2
+#define CLOCK_SVC_NUMBER 3
 
 #endif

@@ -7,19 +7,24 @@
 #include "syscall.h"
 #include "priority_queue.h"
 
-static const char *str="Hi, tim37021, ps2747";
 IOInterface *interface;
 int last_result[4][4];
 KeyEvent cur_event[4][4];
 char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
 int n;
 char text[256];
-uint32_t idle_task_stack[36], task_stack[256], task_stack2[256];
+uint32_t idle_task_stack[36], task_stack[64];
+uint32_t main_task_stack[512];
+
+#define NORMAL_PRIORITY 1000
+#define LOW_PRIORITY 100
+#define AGING_VALUE 10
 
 void syscall();
 volatile uint32_t ticks_counter=0;
 
 struct TCB {
+	int orig_priority;
 	int priority;
 	// 0 = ready, 1 suspended, <0 = sleep milisecond
 	int status;
@@ -28,7 +33,7 @@ struct TCB {
 
 #define MAX_TASK 5
 struct TCB tasks[MAX_TASK];
-void *tasks_queue[MAX_TASK+1];
+struct TCB *tasks_queue[MAX_TASK+1];
 
 static void init_usart1()
 {
@@ -77,13 +82,6 @@ static void init(void)
 	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
 	
 	interface = init_stm32_keybd();
-
-	// Enable gpio clock
-	init_output_pins(GPIOE, GPIO_Pin_8 | GPIO_Pin_10);
-	GPIO_ResetBits(GPIOE, GPIO_Pin_8 | GPIO_Pin_10);
-	
-	init_input_pins(GPIOD, GPIO_Pin_12, GPIO_PuPd_DOWN);
-
 	init_usart1();
 }
 
@@ -118,7 +116,6 @@ static void scan(void)
 __attribute__((naked)) void idle_task()
 {
 	while(1) {
-		//sleep(1000);
 	}
 }
 
@@ -131,6 +128,11 @@ void test_task(struct test_task_param *param_)
 {
 	struct test_task_param param = *param_;
 	int on_off = 0;
+
+	// Enable gpio clock
+	init_output_pins(GPIOE, param.pin);
+	GPIO_ResetBits(GPIOE, param.pin);
+
 	while(1) {
 		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
@@ -139,6 +141,12 @@ void test_task(struct test_task_param *param_)
 		else
 			GPIO_ResetBits(GPIOE, param.pin);
 		sleep(param.delay);
+	}
+}
+
+void main_task() {
+	while(1) {
+		scan();
 	}
 }
 
@@ -157,11 +165,11 @@ struct TCB create_task(uint32_t *stack, void (*start)(), void *param, int stack_
 	// r0
 	stack[9] = (uint32_t)param;
 	stack = activate(stack);
-	return (struct TCB) {.status=0, .priority=priority, .stack=stack};
+	return (struct TCB) {.status=0, .orig_priority=priority, .priority=priority, .stack=stack};
 }
 
 static int compare(const void *lhs, const void *rhs) {
-	return ((const struct TCB *)lhs)->priority < ((const struct TCB *)rhs)->priority;
+	return ((const struct TCB *)lhs)->priority > ((const struct TCB *)rhs)->priority;
 }
 
 #define TICKS_PER_SEC 10000
@@ -171,15 +179,19 @@ int main(void)
 
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
 
-	int num_tasks=0;
-	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, NULL, 36, 100, 1);
-	struct test_task_param param1={.pin=GPIO_Pin_8, .delay=1000}, param2={.pin=GPIO_Pin_10, .delay=500};
-	tasks[num_tasks++] = create_task(task_stack, test_task, &param1, 256, 1000,  0);
-	tasks[num_tasks++] = create_task(task_stack2, test_task, &param2, 256, 1000,  0);
 	PriorityQueue q = pq_init(tasks_queue, compare);
+
+	int num_tasks=0;
+	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, NULL, 36, LOW_PRIORITY, 1);
+
+	struct test_task_param param1={.pin=GPIO_Pin_8, .delay=1000};
+	tasks[num_tasks++] = create_task(task_stack, test_task, &param1, 64, NORMAL_PRIORITY,  0);
+	tasks[num_tasks++] = create_task(main_task_stack, main_task, NULL, 512, NORMAL_PRIORITY,  0);
+
 	for(int i=0; i<num_tasks; i++) {
 		pq_push(&q, &tasks[i]);
 	}
+
 
 	while (1) {
 		struct TCB *top;
@@ -194,10 +206,12 @@ int main(void)
 			pq_push(&q, stored_tasks[i]);
 		}
 		// now top is the one we are going to activate
-		
 		top->status = 0;
+		top->priority = top->orig_priority;
 		top->stack = activate(top->stack);
 		int func_number = top->stack[-1];
+
+		// param1 is also return value
 		void *param1 = &top->stack[9];
 		switch(func_number) {
 			case 0:
@@ -207,13 +221,15 @@ int main(void)
 				break;
 		} 
 		// no need to push back top
-	}
-}
 
-__attribute__((naked)) void OnSysTick(void)
-{
-	ticks_counter++;
-	__asm__("bx lr\n");
+		// aging technique
+		for(int i=1; i<=num_tasks; i++) {
+			if(tasks_queue[i] != top) {
+				tasks_queue[i]->priority += AGING_VALUE;
+			}
+		}
+		pq_refresh(&q);
+	}
 }
 
 #ifdef  USE_FULL_ASSERT
