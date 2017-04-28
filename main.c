@@ -8,14 +8,13 @@
 #include "priority_queue.h"
 
 static const char *str="Hi, tim37021, ps2747";
-static int on_off = 0;
 IOInterface *interface;
 int last_result[4][4];
 KeyEvent cur_event[4][4];
 char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
 int n;
 char text[256];
-uint32_t idle_task_stack[36], task_stack[512];
+uint32_t idle_task_stack[36], task_stack[256], task_stack2[256];
 
 void syscall();
 volatile uint32_t ticks_counter=0;
@@ -30,7 +29,6 @@ struct TCB {
 #define MAX_TASK 5
 struct TCB tasks[MAX_TASK];
 void *tasks_queue[MAX_TASK+1];
-int num_tasks=0;
 
 static void init_usart1()
 {
@@ -81,8 +79,8 @@ static void init(void)
 	interface = init_stm32_keybd();
 
 	// Enable gpio clock
-	init_output_pins(GPIOE, GPIO_Pin_8);
-	GPIO_ResetBits(GPIOE, GPIO_Pin_8);
+	init_output_pins(GPIOE, GPIO_Pin_8 | GPIO_Pin_10);
+	GPIO_ResetBits(GPIOE, GPIO_Pin_8 | GPIO_Pin_10);
 	
 	init_input_pins(GPIOD, GPIO_Pin_12, GPIO_PuPd_DOWN);
 
@@ -91,20 +89,6 @@ static void init(void)
 
 static void update(void)
 {
-
-	if (GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_12)) {
-		//LCD_Clear(0xFFFF);
-		on_off = !on_off;
-		if(on_off)
-			GPIO_SetBits(GPIOE,GPIO_Pin_8);
-		else
-			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
-		// something here
-		str = "and, bobo";
-		for(int i=0; i<100000; i++);
-		while (GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_12)); // debounce
-	}
-
 
 	if(STM_EVAL_PBGetState(BUTTON_USER)) {
 		for(int i=0; i<100000; i++);
@@ -140,6 +124,7 @@ __attribute__((naked)) void idle_task()
 
 void test_task()
 {
+	int on_off = 0;
 	while(1) {
 		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
@@ -148,6 +133,20 @@ void test_task()
 		else
 			GPIO_ResetBits(GPIOE,GPIO_Pin_8);
 		sleep(1000);
+	}
+}
+
+void test_task2()
+{
+	int on_off = 0;
+	while(1) {
+		//LCD_Clear(0xFFFF);
+		on_off = !on_off;
+		if(on_off)
+			GPIO_SetBits(GPIOE,GPIO_Pin_10);
+		else
+			GPIO_ResetBits(GPIOE,GPIO_Pin_10);
+		sleep(500);
 	}
 }
 
@@ -175,14 +174,14 @@ int main(void)
 {
 	init();
 
-
+	int num_tasks=0;
 	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, 36, 100, 1);
-	tasks[num_tasks++] = create_task(task_stack, test_task, 512, 1000,  0);
+	tasks[num_tasks++] = create_task(task_stack, test_task, 256, 1000,  0);
+	tasks[num_tasks++] = create_task(task_stack2, test_task2, 256, 1000,  0);
 	PriorityQueue q = pq_init(tasks_queue, compare);
 	for(int i=0; i<num_tasks; i++) {
 		pq_push(&q, &tasks[i]);
 	}
-	
 
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
 
