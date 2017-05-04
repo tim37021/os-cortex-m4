@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include "syscall_number.h"
 
-void sleep(uint32_t miliseconds);
-uint32_t get_ticks();
+void ksleep(uint32_t miliseconds);
+uint32_t kget_ticks();
+
 
 #endif

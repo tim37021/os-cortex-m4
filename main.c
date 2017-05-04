@@ -80,7 +80,7 @@ void test_task(struct test_task_param *param_)
 			GPIO_SetBits(GPIOE, param.pin);
 		else
 			GPIO_ResetBits(GPIOE, param.pin);
-		sleep(param.delay);
+		ksleep(param.delay);
 	}
 }
 
@@ -108,7 +108,7 @@ void main_task() {
 		}
 
 		// sleep for 20 ms
-		sleep(20);
+		ksleep(20);
 	}
 }
 
