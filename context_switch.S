@@ -1,18 +1,18 @@
 #include "syscall_number.h"
 
 .syntax unified
-.global ksleep
-ksleep:
+.global sleep
+sleep:
     svc SLEEP_SVC_NUMBER
     bx lr
 
-.global kget_ticks
+.global get_ticks
 kget_ticks:
     svc GET_TICKS_SVC_NUMBER
     bx lr
 
-.global ksbrk
-ksbrk:
+.global sbrk
+sbrk:
     svc SBRK_SVC_NUMBER
     bx lr
 

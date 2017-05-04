@@ -6,6 +6,7 @@
 #include "keybd_stm32.h"
 #include "syscall.h"
 #include "priority_queue.h"
+#include "malloc.h"
 #include <tm_stm32f4_usb_hid_device.h>
 
 const char *key_name[4][4] = {
@@ -81,7 +82,7 @@ void test_task(struct test_task_param *param_)
 			GPIO_SetBits(GPIOE, param.pin);
 		else
 			GPIO_ResetBits(GPIOE, param.pin);
-		ksleep(param.delay);
+		sleep(param.delay);
 	}
 }
 
@@ -109,7 +110,7 @@ void main_task() {
 		}
 
 		// sleep for 20 ms
-		ksleep(20);
+		sleep(20);
 	}
 }
 
@@ -191,7 +192,7 @@ int main(void)
 				*(uint32_t *)param1 = ticks_counter;
 				// skip aging technique
 				continue;
-			case SBRK_SVC_NUMBER: // ksbrk
+			case SBRK_SVC_NUMBER: // sbrk
 				if(top->stack > top->program_break+*(int32_t *)param1) {
 					uint32_t prev = (uint32_t)top->program_break;
 					top->program_break+=*(int32_t *)param1;
