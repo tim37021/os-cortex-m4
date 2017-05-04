@@ -4,5 +4,6 @@
 #define BACKTOSV_SVC_NUMBER 1
 #define SLEEP_SVC_NUMBER 2
 #define GET_TICKS_SVC_NUMBER 3
+#define SBRK_SVC_NUMBER 4
 
 #endif

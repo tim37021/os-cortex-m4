@@ -11,6 +11,11 @@ kget_ticks:
     svc GET_TICKS_SVC_NUMBER
     bx lr
 
+.global ksbrk
+ksbrk:
+    svc SBRK_SVC_NUMBER
+    bx lr
+
 .global activate
 activate:
     /* save kernel state in ip register */

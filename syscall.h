@@ -6,6 +6,6 @@
 
 void ksleep(uint32_t miliseconds);
 uint32_t kget_ticks();
-
+void *ksbrk(int32_t inc);
 
 #endif

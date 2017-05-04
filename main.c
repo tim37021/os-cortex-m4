@@ -32,6 +32,7 @@ struct TCB {
 	int priority;
 	// 0 = ready, 1 suspended, <0 = sleep milisecond
 	int status;
+	uint8_t *program_break;
 	uint32_t *stack;
 };
 
@@ -114,9 +115,10 @@ void main_task() {
 
 void *activate(void *);
 
-struct TCB create_task(uint32_t *stack, void (*start)(), void *param, int stack_size, int priority, int first) 
+struct TCB create_task(uint32_t *space, void (*start)(), void *param, int stack_size, int priority, int first) 
 {
 	static int next_pid = 1;
+	uint32_t *stack = space;
 	stack +=  stack_size - 32;
 	if(first) {
 		stack[8] = (uint32_t)start;
@@ -128,7 +130,8 @@ struct TCB create_task(uint32_t *stack, void (*start)(), void *param, int stack_
 	// r0
 	stack[9] = (uint32_t)param;
 	stack = activate(stack);
-	return (struct TCB) {.pid = next_pid++, .status=0, .orig_priority=priority, .priority=priority, .stack=stack};
+	return (struct TCB) {.pid = next_pid++, .status=0, .orig_priority=priority, 
+		.priority=priority, .program_break=(uint8_t *)space, .stack=stack};
 }
 
 static int compare(const void *lhs, const void *rhs) {
@@ -185,7 +188,16 @@ int main(void)
 				top->status = -(TICKS_PER_SEC*(*(int32_t *)param1)/1000 + (int32_t)ticks_counter);
 				break;
 			case GET_TICKS_SVC_NUMBER: // CLOCK
-				*(int *)param1 = ticks_counter;
+				*(uint32_t *)param1 = ticks_counter;
+				// skip aging technique
+				continue;
+			case SBRK_SVC_NUMBER: // ksbrk
+				if(top->stack > top->program_break+*(int32_t *)param1) {
+					uint32_t prev = (uint32_t)top->program_break;
+					top->program_break+=*(int32_t *)param1;
+					*(int32_t *)param1 = prev;
+				} else
+					*(int32_t *)param1 = -1;
 				// skip aging technique
 				continue;
 		} 
