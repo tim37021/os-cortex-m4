@@ -11,8 +11,8 @@ sleep:
     svc SLEEP_SVC_NUMBER
     bx lr
 
-.global back_to_sv
-    svc BACKTOSV_SVC_NUMBER
+.global get_ticks
+    svc GET_TICKS_SVC_NUMBER
     bx lr
 
 .global activate

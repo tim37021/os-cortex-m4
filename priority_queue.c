@@ -1,7 +1,7 @@
 #include "priority_queue.h"
 
 
-PriorityQueue pq_init(void **arr, int (*func)(void *, void *))
+PriorityQueue pq_init(const void **arr, int (*func)(const void *, const void *))
 {
     return (PriorityQueue){.data=arr, .n=0, .compare=func};
 }
@@ -22,7 +22,7 @@ static void heapify(PriorityQueue *q, int i)
     }
 }
 
-void pq_push(PriorityQueue *q, void *data)
+void pq_push(PriorityQueue *q, const void *data)
 {
     q->n++;
     q->data[q->n] = data;

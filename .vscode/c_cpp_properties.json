@@ -16,6 +16,8 @@
             "includePath": [
                 "/usr/include",
                 "/usr/local/include",
+                "/home/tim/Workspace/project/usb_lib",
+                "/home/tim/Workspace/project/usb_lib/usb_hid_device",
                 "/home/tim/Workspace/STM32F429I-Discovery_FW_V1.0.1/Utilities/STM32F429I-Discovery",
                 "/home/tim/Workspace/STM32F429I-Discovery_FW_V1.0.1/Libraries/CMSIS/Device/ST/STM32F4xx/Include",
                 "/home/tim/Workspace/STM32F429I-Discovery_FW_V1.0.1/Libraries/CMSIS/Include",

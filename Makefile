@@ -6,6 +6,7 @@ HEX_IMAGE = $(PROJECT).hex
 
 # set the path to STM32F429I-Discovery firmware package
 STDP ?= ../STM32F429I-Discovery_FW_V1.0.1
+USB_LIB ?= ./usb_lib
 
 # Toolchain configurations
 CROSS_COMPILE ?= arm-none-eabi-
@@ -82,7 +83,24 @@ LIBS += \
 # STM32F4xx_StdPeriph_Driver
 CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -I$(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/inc
+CFLAGS += -I$(USB_LIB) -I$(USB_LIB)/usb_hid_device
 CFLAGS += -D"assert_param(expr)=((void)0)"
+
+OBJS_USB += \
+	$(USB_LIB)/tm_stm32f4_usb_hid_device.o \
+	$(USB_LIB)/usb_hid_device/usb_bsp.o \
+	$(USB_LIB)/usb_hid_device/usb_core.o \
+	$(USB_LIB)/usb_hid_device/usb_dcd.o \
+	$(USB_LIB)/usb_hid_device/usb_dcd_int.o \
+	$(USB_LIB)/usb_hid_device/usbd_core.o \
+	$(USB_LIB)/usb_hid_device/usbd_desc.o \
+	$(USB_LIB)/usb_hid_device/usbd_ioreq.o \
+	$(USB_LIB)/usb_hid_device/usbd_usr.o \
+	$(USB_LIB)/usb_hid_device/usbd_req.o \
+	$(USB_LIB)/usb_hid_device/usbd_hid_core.o \
+
+
+
 OBJS += \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/misc.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma2d.o \
@@ -97,7 +115,8 @@ OBJS += \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_syscfg.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.o \
-	$(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.o
+	$(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.o \
+	$(OBJS_USB)
 
 # STM32F429I-Discovery Utilities
 CFLAGS += -I$(STDP)/Utilities/STM32F429I-Discovery

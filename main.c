@@ -6,12 +6,19 @@
 #include "keybd_stm32.h"
 #include "syscall.h"
 #include "priority_queue.h"
+#include <tm_stm32f4_usb_hid_device.h>
 
-const char *key_name[4][4] = {"1.1", "2.1", "3.1", "4.1", "1.2", "2.2", "3.2", "4.2", "1.3", "2.3", "3.3", "4.3", "1.4", "2.4", "3.4", "4.4"};
+const char *key_name[4][4] = {
+	{"1.1", "2.1", "3.1", "4.1"}, 
+	{"1.2", "2.2", "3.2", "4.2"},
+	{ "1.3", "2.3", "3.3", "4.3"},
+	{ "1.4", "2.4", "3.4", "4.4"}
+};
 
 uint32_t idle_task_stack[36], task_stack[64], task_stack2[64];
 uint32_t main_task_stack[512];
 
+#define FORCE_NEXT_PRIORITY 10000
 #define NORMAL_PRIORITY 1000
 #define LOW_PRIORITY 100
 #define AGING_VALUE 10
@@ -20,6 +27,7 @@ void syscall();
 volatile uint32_t ticks_counter=0;
 
 struct TCB {
+	int pid;
 	int orig_priority;
 	int priority;
 	// 0 = ready, 1 suspended, <0 = sleep milisecond
@@ -31,66 +39,13 @@ struct TCB {
 struct TCB tasks[MAX_TASK];
 struct TCB *tasks_queue[MAX_TASK+1];
 
-static void init_usart1()
-{
-    /******** 宣告 USART、GPIO 結構體 ********/
-    GPIO_InitTypeDef GPIO_InitStruct;
-    USART_InitTypeDef USART_InitStruct;
-
-    /******** 啟用 GPIOA、USART1 的 RCC 時鐘 ********/
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-
-	// Initialize pins as alternating function
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
-	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);
-
-    /******** USART 基本參數設定 ********/
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-
-	USART_InitStruct.USART_BaudRate = 9600;
-	USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
-	USART_InitStruct.USART_Parity = USART_Parity_No;
-	USART_InitStruct.USART_StopBits = USART_StopBits_1;
-	USART_InitStruct.USART_WordLength = USART_WordLength_8b;
-	USART_Init(USART1, &USART_InitStruct);
-	USART_Cmd(USART1, ENABLE);
-}
-
-void USART1_puts(char* s)
-{
-    while(*s) {
-        while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
-        USART_SendData(USART1, *s);
-        s++;
-    }
-}
-
 static void init(void)
 {
 	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
-	
-
+	TM_USB_HIDDEVICE_Init();
 }
 
-static void update(void)
-{
-
-	if(STM_EVAL_PBGetState(BUTTON_USER)) {
-		for(int i=0; i<100000; i++);
-		while (STM_EVAL_PBGetState(BUTTON_USER)); // debounce
-	}
-	
-}
-
-static void scan(IOInterface *interface, int last_result[][4], int cur_event[][4])
+static void scan(IOInterface *interface, int last_result[][4], KeyEvent cur_event[][4])
 {
 	//LCD_DisplayStringLine(LCD_LINE_1, str);
 	int result[4][4];
@@ -135,6 +90,9 @@ void main_task() {
 	char text[64];
 	text[0] = '\0';
 	IOInterface *interface = init_stm32_keybd();
+
+	while(TM_USB_HIDDEVICE_GetStatus() != TM_USB_HIDDEVICE_Status_Connected);
+
 	while(1) {
 		scan(interface, last_result, cur_event);
 		for(int i=0; i<4; i++) {
@@ -145,9 +103,10 @@ void main_task() {
 		}
 
 		if(text[0]) {
-			USART1_puts(text);
+			TM_USB_HIDDEVICE_SendCustom((uint8_t *)text, strlen(text));
 			text[0]='\0';
 		}
+
 		// sleep for 20 ms
 		sleep(20);
 	}
@@ -157,6 +116,7 @@ void *activate(void *);
 
 struct TCB create_task(uint32_t *stack, void (*start)(), void *param, int stack_size, int priority, int first) 
 {
+	static int next_pid = 1;
 	stack +=  stack_size - 32;
 	if(first) {
 		stack[8] = (uint32_t)start;
@@ -168,7 +128,7 @@ struct TCB create_task(uint32_t *stack, void (*start)(), void *param, int stack_
 	// r0
 	stack[9] = (uint32_t)param;
 	stack = activate(stack);
-	return (struct TCB) {.status=0, .orig_priority=priority, .priority=priority, .stack=stack};
+	return (struct TCB) {.pid = next_pid++, .status=0, .orig_priority=priority, .priority=priority, .stack=stack};
 }
 
 static int compare(const void *lhs, const void *rhs) {
@@ -178,11 +138,12 @@ static int compare(const void *lhs, const void *rhs) {
 #define TICKS_PER_SEC 10000
 int main(void)
 {
+	SystemInit();
 	init();
 
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
 
-	PriorityQueue q = pq_init(tasks_queue, compare);
+	PriorityQueue q = pq_init((const void **)tasks_queue, compare);
 
 	int num_tasks=0;
 	tasks[num_tasks++] = create_task(idle_task_stack, idle_task, NULL, 36, LOW_PRIORITY, 1);
@@ -223,6 +184,10 @@ int main(void)
 			case SLEEP_SVC_NUMBER: // SLEEP
 				top->status = -(TICKS_PER_SEC*(*(int32_t *)param1)/1000 + (int32_t)ticks_counter);
 				break;
+			case GET_TICKS_SVC_NUMBER: // CLOCK
+				*(int *)param1 = ticks_counter;
+				// skip aging technique
+				continue;
 		} 
 		// no need to push back top
 
