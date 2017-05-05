@@ -7,13 +7,23 @@ sleep:
     bx lr
 
 .global get_ticks
-kget_ticks:
+get_ticks:
     svc GET_TICKS_SVC_NUMBER
     bx lr
 
 .global sbrk
 sbrk:
     svc SBRK_SVC_NUMBER
+    bx lr
+
+.global register_fifo
+register_fifo:
+    svc REGISTER_FIFO_SVC_NUMBER
+    bx lr
+
+.global unregister_fifo
+unregister_fifo:
+    svc UNREGISTER_FIFO_SVC_NUMBER
     bx lr
 
 .global activate

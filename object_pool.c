@@ -28,9 +28,10 @@ int32_t op_register(ObjectPool *pool, void *args)
 {
     uint32_t i;
     for(i=0; i<pool->size; i++) {
-        if(pool->objects[i].data) {
+        if(pool->objects[i].data==NULL) {
             pool->objects[i].data = pool->malloc(pool->element_size);
             pool->ctor(pool->malloc, pool->free, pool->objects[i].data, args);
+            break;
         }
     }
     return i<pool->size? (int32_t)i: -1;

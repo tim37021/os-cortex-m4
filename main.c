@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "priority_queue.h"
 #include "malloc.h"
+#include "fifo.h"
 #include <tm_stm32f4_usb_hid_device.h>
 
 const char *key_name[4][4] = {
@@ -40,6 +41,8 @@ struct TCB {
 #define MAX_TASK 5
 struct TCB tasks[MAX_TASK];
 struct TCB *tasks_queue[MAX_TASK+1];
+
+#define MAX_FIFO 10
 
 static void init(void)
 {
@@ -93,6 +96,8 @@ void main_task() {
 	text[0] = '\0';
 	IOInterface *interface = init_stm32_keybd();
 
+	int id = register_fifo(100);
+
 	while(TM_USB_HIDDEVICE_GetStatus() != TM_USB_HIDDEVICE_Status_Connected);
 
 	while(1) {
@@ -130,7 +135,6 @@ struct TCB create_task(uint32_t *space, void (*start)(), void *param, int stack_
 	}
 	// r0
 	stack[9] = (uint32_t)param;
-	stack = activate(stack);
 	return (struct TCB) {.pid = next_pid++, .status=0, .orig_priority=priority, 
 		.priority=priority, .program_break=(uint8_t *)space, .stack=stack};
 }
@@ -161,7 +165,9 @@ int main(void)
 		pq_push(&q, &tasks[i]);
 	}
 
+	tasks[0].stack = activate(tasks[0].stack);
 
+	ObjectPool fifo_pool = fp_init(MAX_FIFO, kmalloc, kfree);
 	while (1) {
 		struct TCB *top;
 		void *stored_tasks[MAX_TASK];
@@ -201,6 +207,15 @@ int main(void)
 				} else
 					*(int32_t *)param1 = -1;
 				// skip aging technique
+				continue;
+			case REGISTER_FIFO_SVC_NUMBER:
+				{
+					FIFOCreateInfo info = {.size = *(int32_t *)param1};
+					*(int32_t *)param1 = op_register(&fifo_pool, &info);
+				}
+				continue;
+			case UNREGISTER_FIFO_SVC_NUMBER:
+				op_unregister(&fifo_pool, *(int32_t *)param1);
 				continue;
 		} 
 		// no need to push back top

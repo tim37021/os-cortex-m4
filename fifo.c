@@ -15,7 +15,7 @@ static void fp_dtor(void *(*malloc)(size_t), void (*free)(void *), void *dst) {
     free(((FIFO *)dst)->data);
 }
 
-ObjectPool fp_init(uint32_t size, void *(*malloc)(size_t), void *(*free)(size_t))
+ObjectPool fp_init(uint32_t size, void *(*malloc)(size_t), void (*free)(void *))
 {
     return op_allocate(size, sizeof(FIFO), malloc, free, fp_ctor, fp_dtor);
 }
