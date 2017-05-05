@@ -2,6 +2,7 @@
 #define _FIFO_H_
 
 #include <stdint.h>
+#include "object_pool.h"
 
 typedef struct {
     uint8_t *data;
@@ -10,8 +11,15 @@ typedef struct {
     int32_t rear;
 } FIFO;
 
+typedef struct {
+    uint32_t size;
+} FIFOCreateInfo;
+
+// Helper function for FIFO Pool
+ObjectPool fp_init(uint32_t size, void *(*malloc)(size_t), void *(*free)(size_t));
 FIFO fifo_init(void *data, uint32_t size);
 int32_t fifo_write(FIFO *fifo, void *buffer, int32_t count);
 int32_t fifo_read(FIFO *fifo, void *buffer, int32_t count);
+
 
 #endif

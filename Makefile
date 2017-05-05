@@ -64,6 +64,7 @@ OBJS = \
     stm32f4xx_it.o \
 	malloc.o \
 	fifo.o \
+	object_pool.o \
     system_stm32f4xx.o
 
 # L3GD20 default callback

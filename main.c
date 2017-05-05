@@ -193,7 +193,8 @@ int main(void)
 				// skip aging technique
 				continue;
 			case SBRK_SVC_NUMBER: // sbrk
-				if(top->stack > top->program_break+*(int32_t *)param1) {
+				// TODO: Check lower bound
+				if((uint32_t)top->stack > (uint32_t)(top->program_break+*(int32_t *)param1)) {
 					uint32_t prev = (uint32_t)top->program_break;
 					top->program_break+=*(int32_t *)param1;
 					*(int32_t *)param1 = prev;

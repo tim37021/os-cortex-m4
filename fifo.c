@@ -1,5 +1,24 @@
 #include "fifo.h"
+#include <string.h>
 
+static int fp_ctor(void *(*malloc)(size_t), void (*free)(void *), void *dst, void *args) {
+    FIFOCreateInfo *info= (FIFOCreateInfo *)args;
+    void *data = malloc(info->size);
+    if(data) {
+        *(FIFO *)dst = fifo_init(data, info->size);
+        return 1;
+    } else
+        return 0;
+}
+
+static void fp_dtor(void *(*malloc)(size_t), void (*free)(void *), void *dst) {
+    free(((FIFO *)dst)->data);
+}
+
+ObjectPool fp_init(uint32_t size, void *(*malloc)(size_t), void *(*free)(size_t))
+{
+    return op_allocate(size, sizeof(FIFO), malloc, free, fp_ctor, fp_dtor);
+}
 
 FIFO fifo_init(void *data, uint32_t size)
 {
