@@ -1,6 +1,12 @@
 #include "syscall_number.h"
 
 .syntax unified
+
+.global get_pid
+get_pid:
+    svc GET_PID_SVC_NUMBER
+    bx lr
+
 .global sleep
 sleep:
     svc SLEEP_SVC_NUMBER
@@ -24,6 +30,21 @@ register_fifo:
 .global unregister_fifo
 unregister_fifo:
     svc UNREGISTER_FIFO_SVC_NUMBER
+    bx lr
+
+.global attach_fifo
+attach_fifo:
+    svc ATTACH_FIFO_SVC_NUMBER
+    bx lr
+
+.global send
+send:
+    svc SEND_SVC_NUMBER
+    bx lr
+
+.global receive
+receive:
+    svc RECEIVE_SVC_NUMBER
     bx lr
 
 .global activate
