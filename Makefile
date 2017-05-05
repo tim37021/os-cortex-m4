@@ -63,6 +63,7 @@ OBJS = \
 	priority_queue.o \
     stm32f4xx_it.o \
 	malloc.o \
+	fifo.o \
     system_stm32f4xx.o
 
 # L3GD20 default callback
