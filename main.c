@@ -24,6 +24,7 @@ uint32_t main_task_stack[512];
 #define NORMAL_PRIORITY 1000
 #define LOW_PRIORITY 100
 #define AGING_VALUE 10
+#define TASK_READY(t) ((t)->status==0 || ((t)->status<0 && ticks_counter >= -(t)->status))
 
 void syscall();
 volatile uint32_t ticks_counter=0;
@@ -77,12 +78,12 @@ void usb_driver_task()
 	unsigned char msg[24];
 
 	attach_fifo(register_fifo(128));
-	while(TM_USB_HIDDEVICE_GetStatus() != TM_USB_HIDDEVICE_Status_Connected) {
-		sleep(20);
-	}
 	while(1) {
 		int32_t len=receive(&pid, &tag, msg, 24);
-		TM_USB_HIDDEVICE_SendCustom(msg, len);
+		if(TM_USB_HIDDEVICE_GetStatus() == TM_USB_HIDDEVICE_Status_Connected)
+			TM_USB_HIDDEVICE_SendCustom(msg, len);
+		else
+			sleep(20);
 	}
 }
 
@@ -193,13 +194,18 @@ static int receive_mailbox(int pid)
 	return 0;
 }
 
+void clear_svc_flag()
+{
+	
+}
+
 #define TICKS_PER_SEC 10000
 int main(void)
 {
 	SystemInit();
-	init();
-
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
+
+	init();
 
 	PriorityQueue q = pq_init((const void **)tasks_queue, compare);
 
@@ -223,7 +229,7 @@ int main(void)
 		struct TCB *top;
 		void *stored_tasks[MAX_TASK];
 		int num_stored_tasks=0;
-		while((top = (struct TCB *)pq_top(&q)) && (top->status!=0 && ticks_counter<-top->status)) {
+		while((top = (struct TCB *)pq_top(&q)) && !TASK_READY(top)) {
 			stored_tasks[num_stored_tasks++] = top;
 			pq_pop(&q);
 		}
@@ -277,6 +283,10 @@ int main(void)
 			case ATTACH_FIFO_SVC_NUMBER:
 				// TODO: Check the parameter
 				top->mailbox = (FIFO *)fifo_pool.objects[*(int32_t *)param1].data;
+				if(fifo_free_space(top->mailbox) < sizeof(MailHeader)) {
+					*(int32_t *)param1 = -1;
+					top->mailbox = NULL;
+				}
 				continue;
 			case SEND_SVC_NUMBER:
 				{
@@ -285,9 +295,10 @@ int main(void)
 					struct TCB *dst_task = &tasks[dst-1];
 					if(dst_task->mailbox) {
 						// READY!!
-						fifo_write(dst_task->mailbox, &header, sizeof(header));
-						*(int32_t *)param1 = fifo_write(dst_task->mailbox, *(void **)param3, header.size);
-
+						if(fifo_free_space(dst_task->mailbox) >= sizeof(MailHeader)+header.size) {
+							fifo_write(dst_task->mailbox, &header, sizeof(MailHeader));
+							*(int32_t *)param1 = fifo_write(dst_task->mailbox, *(void **)param3, header.size);
+						}
 						// Process is waiting on mailbox, ugly hack.....
 						if(dst_task->status==1) {
 							receive_mailbox(dst);

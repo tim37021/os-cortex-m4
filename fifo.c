@@ -26,14 +26,19 @@ FIFO fifo_init(void *data, uint32_t size)
     return (FIFO) {.data=(uint8_t *)data, .size=size, .front=0, .rear=0};
 }
 
-static inline int32_t fifo_size(FIFO *fifo)
+static inline uint32_t fifo_size(FIFO *fifo)
 {
     return (fifo->rear>=fifo->front ? fifo->rear-fifo->front: fifo->size-fifo->front+fifo->rear);
 }
 
+uint32_t fifo_free_space(FIFO *fifo)
+{
+    return (fifo->size - 1) - fifo_size(fifo);
+}
+
 int32_t fifo_write(FIFO *fifo, void *buffer, int32_t count)
 {
-    uint32_t remains = (fifo->size - 1) - fifo_size(fifo);
+    uint32_t remains = fifo_free_space(fifo);
     if(count > remains) {
         count = remains;
     }
