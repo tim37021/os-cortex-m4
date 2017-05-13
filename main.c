@@ -295,7 +295,7 @@ int main(void)
 					struct TCB *dst_task = &tasks[dst-1];
 					if(dst_task->mailbox) {
 						// READY!!
-						if(fifo_free_space(dst_task->mailbox) >= sizeof(MailHeader)+header.size) {
+						if(fifo_free_space(dst_task->mailbox) >= sizeof(MailHeader)) {
 							fifo_write(dst_task->mailbox, &header, sizeof(MailHeader));
 							*(int32_t *)param1 = fifo_write(dst_task->mailbox, *(void **)param3, header.size);
 						}
