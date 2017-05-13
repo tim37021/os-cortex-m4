@@ -167,11 +167,16 @@ void PendSV_Handler(void)
 extern void OnSysTick(void);
  __attribute__ ((naked)) void SysTick_Handler(void)
 {
-
     __asm__(
-      "cmp lr, #0xFFFFFFF9\n"
-      "it eq\n"
-      "bxeq lr\n");
+      "ldr r1, =ticks_counter\n"
+      "ldr r0, [r1]\n"
+      "add r0, #1\n"
+      "str r0, [r1]\n"
+    );
+    __asm__(
+      "cmp lr, #0xFFFFFFFD\n"
+      "it ne\n"
+      "bxne lr\n");
     __asm__(
       "mrs r0, psp\n"
       "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"

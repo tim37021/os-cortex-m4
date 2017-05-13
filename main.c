@@ -250,7 +250,7 @@ int main(void)
 		void *param4 = &top->stack[12];
 		switch(func_number) {
 			case 0:
-				ticks_counter++; break;
+				break;
 			case GET_PID_SVC_NUMBER:
 				*(uint32_t *)param1 = top->pid;
 				continue;
