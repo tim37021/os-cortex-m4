@@ -59,7 +59,7 @@ activate:
     /* switch to process stack */
     msr psp, r0
 
-    mov r0, #3
+    mov r0, #2
     msr control, r0
 
     bx lr

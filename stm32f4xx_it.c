@@ -30,6 +30,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
 #include "stdint.h"  
+#include "stm32f4xx.h"
   
 /** @addtogroup STM32F429I_DISCOVERY_Examples
   * @{
@@ -119,15 +120,6 @@ void UsageFault_Handler(void)
 extern void syscall_handler(int, uint32_t psp);
  __attribute__ ((naked)) void SVC_Handler(void)
 {
-  /*__asm__(
-    "ldr r0, [sp, #0x18]\n"
-    "ldr r0, [r0, #-2]\n"
-    "bic r0, r0, 0xFFFFFFF0\n"
-    "push {lr}\n"
-    "bl svc_handler\n"
-    "pop {lr}\n"
-    "bx lr\n");*/
-
     __asm__(
       "mrs r0, psp\n"
       "ldr r1, [r0, #0x18]\n"
@@ -155,8 +147,17 @@ void DebugMon_Handler(void)
   * @param  None
   * @retval None
   */
-void PendSV_Handler(void)
+ __attribute__ ((naked)) void PendSV_Handler(void)
 {
+    __asm__(
+      "mrs r0, psp\n"
+      "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"
+      "mov r1, #0\n"
+      "str r1, [r0, #-4]\n"
+      "pop {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}\n"
+      "msr psr_nzcvq, ip\n"
+      "bx lr\n"
+    );
 }
 
 /**
@@ -167,6 +168,7 @@ void PendSV_Handler(void)
 extern void OnSysTick(void);
  __attribute__ ((naked)) void SysTick_Handler(void)
 {
+  
     __asm__(
       "ldr r1, =ticks_counter\n"
       "ldr r0, [r1]\n"
@@ -177,13 +179,9 @@ extern void OnSysTick(void);
       "cmp lr, #0xFFFFFFFD\n"
       "it ne\n"
       "bxne lr\n");
+    // raise pendsv
+    SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
     __asm__(
-      "mrs r0, psp\n"
-      "stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}\n"
-      "mov r1, #0\n"
-      "str r1, [r0, #-4]\n"
-      "pop {r4, r5, r6, r7, r8, r9, r10, r11, ip, lr}\n"
-      "msr psr_nzcvq, ip\n"
       "bx lr\n"
     );
 }
