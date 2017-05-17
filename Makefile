@@ -55,7 +55,6 @@ LDFLAGS += -T stm32f429zi_flash.ld
 CFLAGS += -I.
 OBJS = \
     main.o \
-	ltdc.o \
 	utility.o \
 	keybd_stm32.o \
 	context_switch.o \
@@ -106,17 +105,12 @@ OBJS_USB += \
 
 OBJS += \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/misc.o \
-    $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma2d.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_exti.o \
-    $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_flash.o \
-    $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_fmc.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_gpio.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.o \
-    $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_ltdc.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_syscfg.o \
-    $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.o \
     $(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.o \
 	$(STDP)/Libraries/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.o \
 	$(OBJS_USB)
@@ -124,9 +118,6 @@ OBJS += \
 # STM32F429I-Discovery Utilities
 CFLAGS += -I$(STDP)/Utilities/STM32F429I-Discovery
 OBJS += $(STDP)/Utilities/STM32F429I-Discovery/stm32f429i_discovery.o
-#OBJS += $(STDP)/Utilities/STM32F429I-Discovery/stm32f429i_discovery_l3gd20.o
-OBJS += $(STDP)/Utilities/STM32F429I-Discovery/stm32f429i_discovery_lcd.o
-OBJS += $(STDP)/Utilities/STM32F429I-Discovery/stm32f429i_discovery_sdram.o
 
 all: $(BIN_IMAGE)
 
