@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "object_pool.h"
 
-typedef struct {
+typedef struct FIFOStruct {
     uint8_t *data;
     uint32_t size;
     int32_t front;

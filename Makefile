@@ -55,6 +55,7 @@ LDFLAGS += -T stm32f429zi_flash.ld
 CFLAGS += -I.
 OBJS = \
     main.o \
+	os.o \
 	utility.o \
 	keybd_stm32.o \
 	context_switch.o \
