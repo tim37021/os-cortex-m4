@@ -33,8 +33,8 @@ __attribute__((naked)) void idle_task()
 }
 
 #define IDLE_TASK_SPACE_SIZE 36
-#define IDLE_TASK_STACK_START (IDLE_TASK_SPACE_SIZE-32)
-static uint32_t idle_task_space[IDLE_TASK_SPACE_SIZE] = {[12]=(uint32_t)idle_task};
+#define IDLE_TASK_STACK_START (IDLE_TASK_SPACE_SIZE-17)
+static uint32_t idle_task_space[IDLE_TASK_SPACE_SIZE] = {[IDLE_TASK_STACK_START+8]=(uint32_t)idle_task};
 static tcb_t idle_task_tcb = {.pid = 1, .status=0, .orig_priority=LOW_PRIORITY, 
 		.priority=LOW_PRIORITY, .program_break=(uint8_t *)idle_task_space, .mailbox=NULL, .stack=&idle_task_space[IDLE_TASK_STACK_START]};
 ///////////////////////////////////////////////////
@@ -108,7 +108,7 @@ void os_init()
 tcb_t os_create_task(uint32_t *space, void (*start)(), void *param, int stack_size, priority_t priority)
 {
 	uint32_t *stack = space;
-	stack +=  stack_size - 32;
+	stack +=  stack_size - 17;
 
 	stack[8] = (uint32_t)0xFFFFFFFD;
 	stack[15] = (uint32_t)start;
