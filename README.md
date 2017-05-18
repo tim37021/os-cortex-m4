@@ -1,11 +1,9 @@
 Introduction
 ============
-A small program on STM32F429 Discovery. Still in early development.
+A small operating system on STM32F429 Discovery. Still in early development.
 
 Build Instructions
 ==================
-Because the STM32F429 Discovery is relatively new, we would recommend to
-prepare several recent utilities:
 
 * [OpenOCD](http://openocd.sourceforge.net/)
 ```
