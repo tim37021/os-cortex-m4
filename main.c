@@ -54,7 +54,7 @@ void test_task(struct test_task_param *param_)
 		on_off = !on_off;
 		if(on_off) {
 			GPIO_SetBits(GPIOE, param.pin);
-			send(2, 0, msg, strlen(msg));
+			send(USB_DRIVER_PID, 0, msg, strlen(msg));
 		} else
 			GPIO_ResetBits(GPIOE, param.pin);
 		sleep(param.delay);
@@ -78,7 +78,7 @@ void main_task() {
 		}
 
 		if(text[0]) {
-			send(1, 0, text, strlen(text));
+			send(USB_DRIVER_PID, 0, text, strlen(text));
 			text[0]='\0';
 		}
 
