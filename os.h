@@ -21,7 +21,11 @@ typedef int32_t priority_t;
 // 1 wait for IO
 typedef int32_t status_t;
 
-#define USB_DRIVER_PID 2
+#define USART_DRIVER_PID 2
+//#define USE_USB_DRIVER
+#if USE_USB_DRIVER
+#define USB_DRIVER_PID 3
+#endif
 
 struct FIFOStruct;
 typedef struct FIFOStruct FIFO;

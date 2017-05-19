@@ -26,7 +26,7 @@ static int compare(const void *lhs, const void *rhs) {
 }
 
 //////////////////////////////////////////////////
-__attribute__((naked)) void idle_task()
+__attribute__((naked)) static void idle_task()
 {
 	while(1) {
 	}
@@ -38,8 +38,9 @@ static uint32_t idle_task_space[IDLE_TASK_SPACE_SIZE] = {[IDLE_TASK_STACK_START+
 static tcb_t idle_task_tcb = {.pid = 1, .status=0, .orig_priority=LOW_PRIORITY, 
 		.priority=LOW_PRIORITY, .program_break=(uint8_t *)idle_task_space, .mailbox=NULL, .stack=&idle_task_space[IDLE_TASK_STACK_START]};
 ///////////////////////////////////////////////////
+#ifdef USE_USB_DRIVER
 #include <tm_stm32f4_usb_hid_device.h>
-void usb_driver()
+static void usb_driver()
 {
 	int32_t pid, tag;
 	unsigned char msg[24];
@@ -47,15 +48,69 @@ void usb_driver()
 	attach_fifo(register_fifo(128));
 	while(1) {
 		int32_t len=receive(&pid, &tag, msg, 24);
-		if(TM_USB_HIDDEVICE_GetStatus() == TM_USB_HIDDEVICE_Status_Connected)
-			TM_USB_HIDDEVICE_SendCustom(msg, len);
-		else
+		if(TM_USB_HIDDEVICE_GetStatus() == TM_USB_HIDDEVICE_Status_Connected){
+			//TM_USB_HIDDEVICE_SendCustom(msg, len);
+		} else
 			sleep(20);
 	}
 }
 
 #define USB_DRIVER_SPACE 128
-static uint32_t usb_driver_space[USB_DRIVER_SPACE];
+static uint32_t usb_driver_space[usb_DRIVER_SPACE];
+#endif
+//////////////////////////////////////////////////////
+static void usart1_init()
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+    USART_InitTypeDef USART_InitStruct;
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+
+	// Initialize pins as alternating function
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+
+	USART_InitStruct.USART_BaudRate = 9600;
+	USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+	USART_InitStruct.USART_Parity = USART_Parity_No;
+	USART_InitStruct.USART_StopBits = USART_StopBits_1;
+	USART_InitStruct.USART_WordLength = USART_WordLength_8b;
+	USART_Init(USART1, &USART_InitStruct);
+	USART_Cmd(USART1, ENABLE);
+}
+
+static void usart1_puts(const uint8_t *s, int len)
+{
+    for(int i=0; i<len; i++) {
+        while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+        USART_SendData(USART1, s[i]);
+    }
+}
+
+static void usart_driver()
+{
+	int32_t pid, tag;
+	unsigned char msg[24];
+
+	attach_fifo(register_fifo(128));
+	while(1) {
+		int32_t len=receive(&pid, &tag, msg, 24);
+		usart1_puts(msg, len);
+	}
+}
+
+#define USART_DRIVER_SPACE 128
+static uint32_t usart_driver_space[USART_DRIVER_SPACE];
 //////////////////////////////////////////////////////
 
 // true: has mail or error
@@ -89,20 +144,31 @@ static int receive_mailbox(int pid)
 
 void os_init()
 {
+	//NVIC_SetPriority(SysTick_IRQn, 0);
+	//NVIC_SetPriority(SVCall_IRQn, (1<<__NVIC_PRIO_BITS) - 1);
+	//NVIC_SetPriority(PendSV_IRQn, (1<<__NVIC_PRIO_BITS) - 1);
+
+	// init usb things..
+
 	next_pid = 2;
 	fifo_pool = fp_init(MAX_FIFO, kmalloc, kfree);
 	q = pq_init((const void **)tasks_queue, compare);
 	// create driver task
-	tasks[0] = idle_task_tcb;
-	tasks[1] = os_create_task(usb_driver_space, usb_driver, NULL, USB_DRIVER_SPACE, NORMAL_PRIORITY);
+	int num_tasks = 0;
+	tasks[num_tasks++] = idle_task_tcb;
+	tasks[num_tasks++] = os_create_task(usart_driver_space, usart_driver, NULL, USART_DRIVER_SPACE, NORMAL_PRIORITY);
+	usart1_init();
+#ifdef USB_USB_DRIVER
+	tasks[num_tasks++] = os_create_task(usb_driver_space, usb_driver, NULL, USB_DRIVER_SPACE, NORMAL_PRIORITY);
+	TM_USB_HIDDEVICE_Init();
+#endif
 
-	// push two fundamental task
-	num_kernel_tasks = 2;
+	// push n fundamental task
+	num_kernel_tasks = num_tasks;
 
 	SysTick_Config(SystemCoreClock / TICKS_PER_SEC); // SysTick event each 10ms
-
-	// init usb things...
-	TM_USB_HIDDEVICE_Init();
+	
+	
 }
 
 tcb_t os_create_task(uint32_t *space, void (*start)(), void *param, int stack_size, priority_t priority)

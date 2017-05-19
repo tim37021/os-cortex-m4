@@ -4,7 +4,7 @@
 #include "stm32f4xx_gpio.h"
 #include "utility.h"
 #include "keybd_stm32.h"
-
+#include "syscall.h"
 #include "malloc.h"
 #include "fifo.h"
 #include "os.h"
@@ -47,14 +47,14 @@ void test_task(struct test_task_param *param_)
 	init_output_pins(GPIOE, param.pin);
 	GPIO_ResetBits(GPIOE, param.pin);
 
-	char msg[12]=" LED_ON";
+	char msg[12]=" LED_ON\r\n";
 	msg[0] = get_pid()+'0';
 	while(1) {
 		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
 		if(on_off) {
 			GPIO_SetBits(GPIOE, param.pin);
-			send(USB_DRIVER_PID, 0, msg, strlen(msg));
+			send(USART_DRIVER_PID, 0, msg, strlen(msg));
 		} else
 			GPIO_ResetBits(GPIOE, param.pin);
 		sleep(param.delay);
@@ -78,7 +78,7 @@ void main_task() {
 		}
 
 		if(text[0]) {
-			send(USB_DRIVER_PID, 0, text, strlen(text));
+			send(USART_DRIVER_PID, 0, text, strlen(text));
 			text[0]='\0';
 		}
 
