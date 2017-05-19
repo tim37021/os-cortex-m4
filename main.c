@@ -78,7 +78,10 @@ void main_task() {
 		}
 
 		if(text[0]) {
-			send(USART_DRIVER_PID, 0, text, strlen(text));
+			int len = strlen(text);
+			text[len] = '\r';
+			text[len+1] = '\n';
+			send(USART_DRIVER_PID, 0, text, len+2);
 			text[0]='\0';
 		}
 
