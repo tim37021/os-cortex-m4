@@ -38,16 +38,15 @@ void test_task(struct test_task_param *param_)
 	int on_off = 0;
 
 	// Enable gpio clock
-	init_output_pins(GPIOE, param.pin);
-	GPIO_ResetBits(GPIOE, param.pin);
+	init_output_pins(GPIOG, param.pin);
+	GPIO_ResetBits(GPIOG, param.pin);
 
 	while(1) {
-		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
 		if(on_off) {
-			GPIO_SetBits(GPIOE, param.pin);
+			GPIO_SetBits(GPIOG, param.pin);
 		} else
-			GPIO_ResetBits(GPIOE, param.pin);
+			GPIO_ResetBits(GPIOG, param.pin);
 		sleep(param.delay);
 	}
 }
@@ -86,6 +85,8 @@ void main_task() {
 				}
 			}
 			buf[4] = buf_size - 5;
+			// ending
+			buf[buf_size++] = 0xFF;
 			send(USART_DRIVER_PID, 0, buf, buf_size);
 		}
 
@@ -102,7 +103,7 @@ int main(void)
 
 	int num_tasks = 0;
 	tcb_t tasks[5];
-	struct test_task_param param1={.pin=GPIO_Pin_8, .delay=1000}, param2={.pin=GPIO_Pin_10, .delay=100};
+	struct test_task_param param1={.pin=GPIO_Pin_13, .delay=1000}, param2={.pin=GPIO_Pin_14, .delay=100};
 	tasks[num_tasks++] = os_create_task(task_stack, test_task, &param1, 64, NORMAL_PRIORITY);
 	tasks[num_tasks++] = os_create_task(task_stack2, test_task, &param2, 64, NORMAL_PRIORITY);
 	tasks[num_tasks++] = os_create_task(main_task_stack, main_task, NULL, 512, NORMAL_PRIORITY);
