@@ -51,30 +51,33 @@ void test_task(struct test_task_param *param_)
 	}
 }
 
+#define RESET_CMD 0xAB
+#define BEGIN_CMD 0xCD
+#define END_CMD 0xEF
+
 void main_task() {
 	int result[4][4];
 	IOInterface *interface = init_stm32_keybd();
-	// init user button
-	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
 
 	uint32_t ticks = get_ticks();
 
 	uint32_t enabled = 0;
 	uint8_t buf[64];
+	uint8_t cmd;
 	int buf_size=0;
 	while(1) {
-		buf_size = read_fifo(STDIN, buf, 64);
-		send(USART_DRIVER_PID, 0, buf, buf_size);
-		scan_keybd(interface, 4, 4, result);
-		if(STM_EVAL_PBGetState(BUTTON_USER)) {
-			if(!enabled) {
-				// reset
-				send(USART_DRIVER_PID, 0, &enabled, sizeof(uint32_t));
-				ticks = get_ticks();
+		if(read_fifo_nb(STDIN, &cmd, 1) == 1) {
+			switch(cmd) {
+				case RESET_CMD:
+					ticks = get_ticks(); break;
+				case BEGIN_CMD:
+					enabled = 1; break;
+				case END_CMD:
+					enabled = 0; break;
 			}
-			enabled = !enabled;
-			while(STM_EVAL_PBGetState(BUTTON_USER));
 		}
+
+		scan_keybd(interface, 4, 4, result);
 
 		if(enabled) {
 			*(uint32_t *)buf = get_ticks() - ticks;
@@ -87,6 +90,7 @@ void main_task() {
 				}
 			}
 			buf[4] = buf_size - 5;
+			buf[buf_size++] = 0xFF;
 			// ending
 			send(USART_DRIVER_PID, 0, buf, buf_size);
 		}
