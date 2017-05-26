@@ -16,5 +16,6 @@ int32_t send(int32_t pid, int32_t tag, void *buf, uint32_t count);
 int32_t receive(int32_t *pid, int32_t *tag, void *buf, uint32_t count);
 int32_t write_fifo(int32_t id, void *buf, uint32_t count);
 int32_t read_fifo(int32_t id, void *buf, uint32_t count);
+int32_t read_fifo_nb(int32_t id, void *buf, uint32_t count);
 
 #endif

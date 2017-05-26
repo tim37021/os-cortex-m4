@@ -66,6 +66,11 @@ read_fifo:
     beq read_fifo
     bx lr
 
+.global read_fifo_nb
+read_fifo_nb:
+    svc READ_FIFO_SVC_NUMBER
+    bx lr
+
 .global activate
 activate:
     /* save kernel state in ip register */
