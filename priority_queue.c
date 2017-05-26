@@ -8,6 +8,25 @@ PriorityQueue pq_init(const void **arr, int (*func)(const void *, const void *))
 
 static void heapify(PriorityQueue *q, int i)
 {
+    while(i*2<=q->n) {
+        void **left = &q->data[i*2];
+        void **right = &q->data[i*2+1];
+        void **winner = (i*2+1>q->n)||q->compare(*left, *right)? left: right;
+        if(q->compare(*winner, q->data[i])) {
+            void *tmp = q->data[i];
+            q->data[i] = *winner;
+            *winner = tmp; 
+        } else
+            break;
+        if(winner == left)
+            i=i*2;
+        else
+            i=i*2+1;
+    }
+}
+
+static void heapify_upward(PriorityQueue *q, int i)
+{
     while(i>=1) {
         void **left = &q->data[i*2];
         void **right = &q->data[i*2+1];
@@ -27,7 +46,7 @@ void pq_push(PriorityQueue *q, const void *data)
     q->n++;
     q->data[q->n] = data;
     if(q->n>1) {
-        heapify(q, q->n/2);
+        heapify_upward(q, q->n/2);
     }
 }
 
@@ -44,7 +63,7 @@ void pq_pop(PriorityQueue *q)
     q->data[1] = tmp;
 
     q->n--;
-    heapify(q, q->n/2);
+    heapify(q, 1);
 }
 
 void pq_refresh(PriorityQueue *q) 
