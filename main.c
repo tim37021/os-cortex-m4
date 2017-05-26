@@ -19,12 +19,6 @@ const char *key_name[4][4] = {
 uint32_t task_stack[64], task_stack2[64];
 uint32_t main_task_stack[512];
 
-static void init(void)
-{
-	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
-	
-}
-
 static void scan(IOInterface *interface, int last_result[][4], KeyEvent cur_event[][4])
 {
 	//LCD_DisplayStringLine(LCD_LINE_1, str);
@@ -47,14 +41,11 @@ void test_task(struct test_task_param *param_)
 	init_output_pins(GPIOE, param.pin);
 	GPIO_ResetBits(GPIOE, param.pin);
 
-	char msg[12]=" LED_ON\r\n";
-	msg[0] = get_pid()+'0';
 	while(1) {
 		//LCD_Clear(0xFFFF);
 		on_off = !on_off;
 		if(on_off) {
 			GPIO_SetBits(GPIOE, param.pin);
-			send(USART_DRIVER_PID, 0, msg, strlen(msg));
 		} else
 			GPIO_ResetBits(GPIOE, param.pin);
 		sleep(param.delay);
@@ -62,30 +53,42 @@ void test_task(struct test_task_param *param_)
 }
 
 void main_task() {
-	int last_result[4][4];
-	KeyEvent cur_event[4][4];
-	char text[64];
-	text[0] = '\0';
+	int result[4][4];
 	IOInterface *interface = init_stm32_keybd();
+	// init user button
+	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
 
+	uint32_t ticks = get_ticks();
+
+	uint32_t enabled = 0;
+	uint8_t buf[64];
+	int buf_size=0;
 	while(1) {
-		scan(interface, last_result, cur_event);
-		for(int i=0; i<4; i++) {
-			for(int j=0; j<4; j++) {
-				if(cur_event[i][j]==KEY_DOWN)
-					strcat(text, key_name[i][j]);
+		scan_keybd(interface, 4, 4, result);
+		if(STM_EVAL_PBGetState(BUTTON_USER)) {
+			if(!enabled) {
+				// reset
+				send(USART_DRIVER_PID, 0, &enabled, sizeof(uint32_t));
+				ticks = get_ticks();
 			}
+			enabled = !enabled;
+			while(STM_EVAL_PBGetState(BUTTON_USER));
 		}
 
-		if(text[0]) {
-			int len = strlen(text);
-			text[len] = '\r';
-			text[len+1] = '\n';
-			send(USART_DRIVER_PID, 0, text, len+2);
-			text[0]='\0';
+		if(enabled) {
+			*(uint32_t *)buf = get_ticks() - ticks;
+			buf_size = 5;
+			for(int i=0; i<4; i++) {
+				for(int j=0; j<4; j++) {
+					if(result[i][j] == 1) {
+						buf[buf_size++] = j*7+i;
+					}
+				}
+			}
+			buf[4] = buf_size - 5;
+			send(USART_DRIVER_PID, 0, buf, buf_size);
 		}
 
-		// sleep for 20 ms
 		sleep(20);
 	}
 }
