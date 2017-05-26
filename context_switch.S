@@ -58,7 +58,10 @@ read_fifo:
     push {r0}
     svc READ_FIFO_SVC_NUMBER
     cmp r0, #0
-    it eq
+
+    itttt eq
+    moveq r0, #20
+    svceq SLEEP_SVC_NUMBER
     popeq {r0}
     beq read_fifo
     bx lr
