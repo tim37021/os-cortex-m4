@@ -27,6 +27,8 @@ typedef int32_t status_t;
 #define USB_DRIVER_PID 3
 #endif
 
+#define STDIN 0
+
 struct FIFOStruct;
 typedef struct FIFOStruct FIFO;
 

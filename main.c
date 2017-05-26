@@ -63,6 +63,8 @@ void main_task() {
 	uint8_t buf[64];
 	int buf_size=0;
 	while(1) {
+		buf_size = read_fifo(STDIN, buf, 64);
+		send(USART_DRIVER_PID, 0, buf, buf_size);
 		scan_keybd(interface, 4, 4, result);
 		if(STM_EVAL_PBGetState(BUTTON_USER)) {
 			if(!enabled) {
@@ -86,7 +88,6 @@ void main_task() {
 			}
 			buf[4] = buf_size - 5;
 			// ending
-			buf[buf_size++] = 0xFF;
 			send(USART_DRIVER_PID, 0, buf, buf_size);
 		}
 

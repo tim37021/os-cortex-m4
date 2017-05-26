@@ -87,6 +87,9 @@ static void usart1_init()
 	USART_InitStruct.USART_WordLength = USART_WordLength_8b;
 	USART_Init(USART1, &USART_InitStruct);
 	USART_Cmd(USART1, ENABLE);
+
+	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+    NVIC_EnableIRQ(USART1_IRQn);
 }
 
 static void usart1_puts(const uint8_t *s, int len)
@@ -95,6 +98,14 @@ static void usart1_puts(const uint8_t *s, int len)
         while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
         USART_SendData(USART1, s[i]);
     }
+}
+
+void USART1_IRQHandler()
+{
+	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET){         
+        char c = USART_ReceiveData(USART1);
+		fifo_write((FIFO *)fifo_pool.objects[STDIN].data, &c, 1);
+	}
 }
 
 static void usart_driver()
@@ -152,6 +163,10 @@ void os_init()
 
 	next_pid = 2;
 	fifo_pool = fp_init(MAX_FIFO, kmalloc, kfree);
+	FIFOCreateInfo info = {.size = 256};
+	// THIS MUST BE 0 for input
+	op_register(&fifo_pool, &info);
+
 	q = pq_init((const void **)tasks_queue, compare);
 	// create driver task
 	int num_tasks = 0;
@@ -162,7 +177,6 @@ void os_init()
 	tasks[num_tasks++] = os_create_task(usb_driver_space, usb_driver, NULL, USB_DRIVER_SPACE, NORMAL_PRIORITY);
 	TM_USB_HIDDEVICE_Init();
 #endif
-
 	// push n fundamental task
 	num_kernel_tasks = num_tasks;
 
@@ -292,6 +306,12 @@ void os_start_schedule(tcb_t user_tasks[], int num_tasks)
 				// len == 0 blocks the call
 				// if len not zero and not sizeof(header) something went so wrong
 				break;
+			case WRITE_FIFO_SVC_NUMBER:
+				// TODO
+				break;
+			case READ_FIFO_SVC_NUMBER:
+				*(int32_t *)param1 = fifo_read((FIFO *)fifo_pool.objects[*(int32_t *)param1].data, *(void **)param2, *(int32_t *)param3);
+				continue;
 		} 
 		// no need to push back top
 

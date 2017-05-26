@@ -47,6 +47,22 @@ receive:
     svc RECEIVE_SVC_NUMBER
     bx lr
 
+.global write_fifo
+write_fifo:
+    svc WRITE_FIFO_SVC_NUMBER
+    bx lr
+
+
+.global read_fifo
+read_fifo:
+    push {r0}
+    svc READ_FIFO_SVC_NUMBER
+    cmp r0, #0
+    it eq
+    popeq {r0}
+    beq read_fifo
+    bx lr
+
 .global activate
 activate:
     /* save kernel state in ip register */
