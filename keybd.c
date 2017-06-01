@@ -1,4 +1,5 @@
 #include "keybd.h"
+#include "syscall.h"
 
 #define HIGH 1
 #define LOW 0
@@ -13,6 +14,7 @@ void scan_keybd(const IOInterface *interface, int rows, int cols, int result[row
 {
     for(int r = 0; r < rows; r++) {
         interface->write_row(r, LOW);
+        sleep(0);
         for(int c = 0; c < cols; c++) {
             result[r][c] = !interface->read_col(c);
         }
